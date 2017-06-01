@@ -44,23 +44,23 @@ void setup()   {
     display.setTextColor(WHITE);
 }
 
-void print_location (float lat, float lon){
+void display_location (float lat, float lon){
     char* lat_prefix;
     char* lon_prefix;
 
     if (lat < 0){
         lat = fabsf(lat);
-        lat_prefix = "S: ";
+        lat_prefix = "S:";
     }
     else {
-        lat_prefix = "N: ";
+        lat_prefix = "N:";
     }
     if (lon < 0){
         lon = fabsf(lon);
-        lon_prefix = "W: ";
+        lon_prefix = "W:";
     }
     else {
-        lon_prefix = "E: ";
+        lon_prefix = "E:";
     }
 
     display.print(lat_prefix);
@@ -73,13 +73,20 @@ void loop() {
 
     while (gps.available( gps_port )) {
         fix = gps.read();
+
         display.setCursor(0, 0);
         display.clearDisplay();
 
-        float lat = fix.latitude();
-        float lon = fix.longitude();
+        display_location(fix.latitude(), fix.longitude());
 
-        print_location(lat, lon);
+        display.print("A:");
+        display.print(fix.alt.whole);
+
+        display.print(" S:");
+        display.print(fix.speed_kph());
+
+        display.print(" H:");
+        display.print(fix.heading());
 
         display.display();
     }
