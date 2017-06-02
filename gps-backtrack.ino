@@ -1,4 +1,3 @@
-
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -93,10 +92,33 @@ void loop() {
         display.setCursor(0, 0);
         display.clearDisplay();
 
-        String date = String(fix.dateTime.year + "-" + fix.dateTime.month);
-
-        display.println(date);
-        //display.println("-" + fix.dateTime.month);
+        display.print(fix.dateTime.year);
+        display.print(".");
+        if (fix.dateTime.month < 10){
+            display.print(0);
+        }
+        display.print(fix.dateTime.month);
+        display.print(".");
+        if (fix.dateTime.date < 10){
+            display.print(0);
+        }
+        display.print(fix.dateTime.date);
+        display.print(" ");
+        if (fix.dateTime.hours < 10){
+            display.print(0);
+        }
+        display.print(fix.dateTime.hours);
+        display.print(":");
+        if (fix.dateTime.minutes < 10){
+            display.print(0);
+        }
+        display.print(fix.dateTime.minutes);
+        display.print(":");
+        if (fix.dateTime.seconds < 10){
+            display.print(0);
+        }
+        display.print(fix.dateTime.seconds);
+        display.println(" UTC");
 
         display_line1(fix.latitude(), fix.heading());
         display_line2(fix.longitude());
@@ -105,3 +127,4 @@ void loop() {
         display.display();
     }
 }
+
