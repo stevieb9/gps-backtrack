@@ -56,12 +56,15 @@ void display_line1 (float lat, int heading){
     }
 
     display.print(lat_prefix);
+    if (lat < 100){
+        display.print(0);
+    }
     display.print(lat, 7);
     display.print(" H:");
     display.println(heading);
 }
 
-void display_line2 (float lon){
+void display_line2 (float lon, int satellites){
     char* lon_prefix;
 
     if (lon < 0){
@@ -73,7 +76,12 @@ void display_line2 (float lon){
     }
 
     display.print(lon_prefix);
-    display.println(lon, 7);
+    if (lon < 100){
+        display.print(0);
+    }
+    display.print(lon, 7);
+    display.print(" s:");
+    display.println(satellites);
 }
 
 void display_line3(int alt, float speed){
@@ -121,7 +129,7 @@ void loop() {
         display.println(" UTC");
 
         display_line1(fix.latitude(), fix.heading());
-        display_line2(fix.longitude());
+        display_line2(fix.longitude(), fix.satellites);
         display_line3(fix.alt.whole, fix.speed_kph());
 
         display.display();
