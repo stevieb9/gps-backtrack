@@ -1,3 +1,4 @@
+
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -44,9 +45,8 @@ void setup()   {
     display.setTextColor(WHITE);
 }
 
-void display_location (float lat, float lon){
+void display_line1 (float lat, int heading){
     char* lat_prefix;
-    char* lon_prefix;
 
     if (lat < 0){
         lat = fabsf(lat);
@@ -55,6 +55,16 @@ void display_location (float lat, float lon){
     else {
         lat_prefix = "N:";
     }
+
+    display.print(lat_prefix);
+    display.print(lat, 7);
+    display.print(" H:");
+    display.println(heading);
+}
+
+void display_line2 (float lon){
+    char* lon_prefix;
+
     if (lon < 0){
         lon = fabsf(lon);
         lon_prefix = "W:";
@@ -63,10 +73,16 @@ void display_location (float lat, float lon){
         lon_prefix = "E:";
     }
 
-    display.print(lat_prefix);
-    display.println(lat, 7);
     display.print(lon_prefix);
     display.println(lon, 7);
+}
+
+void display_line3(int alt, float speed){
+    display.print("A:");
+    display.print(alt);
+    display.print(" S:");
+    display.print(speed);
+
 }
 
 void loop() {
@@ -77,16 +93,14 @@ void loop() {
         display.setCursor(0, 0);
         display.clearDisplay();
 
-        display_location(fix.latitude(), fix.longitude());
+        String date = String(fix.dateTime.year + "-" + fix.dateTime.month);
 
-        display.print("A:");
-        display.print(fix.alt.whole);
+        display.println(date);
+        //display.println("-" + fix.dateTime.month);
 
-        display.print(" S:");
-        display.print(fix.speed_kph());
-
-        display.print(" H:");
-        display.print(fix.heading());
+        display_line1(fix.latitude(), fix.heading());
+        display_line2(fix.longitude());
+        display_line3(fix.alt.whole, fix.speed_kph());
 
         display.display();
     }
