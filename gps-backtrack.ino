@@ -1,35 +1,26 @@
-#include <SPI.h>
-#include <EEPROM.h>
-#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <NMEAGPS.h>
+#include <EEPROM.h>
 #include <NeoSWSerial.h>
-
-
+#include <NMEAGPS.h>
+#include <SPI.h>
+#include <Wire.h>
 
 // GPS
+
 #define RX_PIN 0
 #define TX_PIN 1
 
+#include "GPSport.h"
+#include "Streamers.h"
+
 // OLED
+
 #define OLED_RESET 4
 #define NUMFLAKES 10
 #define XPOS 0
 #define YPOS 1
 #define DELTAY 2
-
-#include "GPSport.h"
-#include "Streamers.h"
-
-#ifdef NeoHWSerial_h
-#define DEBUG_PORT NeoSerial
-#else
-#define DEBUG_PORT Serial
-#endif
-
-static NMEAGPS  gps;
-static gps_fix  fix;
 
 Adafruit_SSD1306 display(OLED_RESET);
 
@@ -37,18 +28,24 @@ Adafruit_SSD1306 display(OLED_RESET);
 #error("Height incorrect, please fix Adafruit_SSD1306.h!");
 #endif
 
-int screen_button_count = 0;
-int screen_button_pin = 2;
+const int SCREEN_BUTTON_PIN = 2;
 
-void screen_button (){
-    screen_button_count++;
-}
+static int screen_button_count = 0;
 
-void setup()   {
+static NMEAGPS  gps;
+static gps_fix  fix;
+
+static int return_mode = 0; // manual toggle for return display
+static int eeprom_read = 0; // has the saved coords been read
+
+static float saved_lat;
+static float saved_lon;
+
+void  setup()   {
     Serial.begin(9600);
     gps_port.begin( 9600 );
 
-    pinMode(screen_button_pin, INPUT_PULLUP);
+    pinMode(SCREEN_BUTTON_PIN, INPUT_PULLUP);
     attachInterrupt(0, screen_button, RISING);
 
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -57,7 +54,6 @@ void setup()   {
     display.setTextSize(0);
     display.setTextColor(WHITE);
 }
-
 char* prefix_lat (float lat){
     char* lat_prefix;
 
@@ -71,7 +67,6 @@ char* prefix_lat (float lat){
 
     return lat_prefix;
 }
-
 char* prefix_lon (float lon){
     char* lon_prefix;
 
@@ -85,7 +80,6 @@ char* prefix_lon (float lon){
 
     return lon_prefix;
 }
-
 float unsign (float deg){
     if (deg < 0){
         deg = fabsf(deg);
@@ -105,7 +99,6 @@ void display_line1 (float lat, int heading){
     display.print(" H:");
     display.println(heading);
 }
-
 void display_line2 (float lon, int satellites){
 
     char* lon_prefix = prefix_lon(lon);
@@ -119,7 +112,6 @@ void display_line2 (float lon, int satellites){
     display.print(" s:");
     display.println(satellites);
 }
-
 void display_line3(int alt, float speed){
     display.print("A:");
     display.print(alt);
@@ -127,7 +119,6 @@ void display_line3(int alt, float speed){
     display.print(speed);
 
 }
-
 void display_home_screen (){
     display.print(fix.dateTime.year);
     display.print(".");
@@ -162,7 +153,6 @@ void display_home_screen (){
     display_line3(fix.alt.whole, fix.speed_kph());
     display.display();
 }
-
 void display_return_screen (float saved_lat, float saved_lon){
     NeoGPS::Location_t saved(saved_lat, saved_lon);
 
@@ -220,22 +210,16 @@ void display_return_screen (float saved_lat, float saved_lon){
 
     display.display();
 }
-
 void coords_save (float lat, float lon){
     int addr = 0;
     EEPROM.put(addr, lat);
     addr += sizeof(float);
     EEPROM.put(addr, lon);
 }
-
-int return_mode = 0;
-int eeprom_read = 0;
-
+void screen_button (){
+    screen_button_count++;
+}
 void loop() {
-
-    float saved_lat;
-    float saved_lon;
-
     if (! eeprom_read){
         coords_save(50.9535522,-114.5805601);
         int addr = 0;
@@ -251,7 +235,7 @@ void loop() {
         display.setCursor(0, 0);
         display.clearDisplay();
 
-        if (screen_button_count % 2 == 0 && ! return_mode){
+        if ((screen_button_count == 0 || screen_button_count % 2 == 0) && ! return_mode){
             display_return_screen(saved_lat, saved_lon);
         }
         else {
