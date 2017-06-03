@@ -177,7 +177,7 @@ void display_return_screen (float saved_lat, float saved_lon){
     }
     display.print(saved_lat, 5);
     display.print(" K:");
-    display.println(fix.location.DistanceKm(saved));
+    display.println(fix.location.DistanceKm(saved), 3);
     display.print(saved_lon_prefix);
     if (lon < 100){
         display.print(0);
