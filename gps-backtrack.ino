@@ -186,29 +186,38 @@ void display_return_screen (float saved_lat, float saved_lon){
         display.print(0);
     }
     display.print(saved_lat, 5);
-    display.print(" D:");
-    display.println(fix.location.BearingToDegrees(saved));
+    display.print(" K:");
+    display.println(fix.location.DistanceKm(saved));
     display.print(saved_lon_prefix);
     if (lat < 100){
         display.print(0);
     }
     display.print(saved_lon, 5);
-    display.print(" K:");
-    display.println(fix.location.DistanceKm(saved));
+    display.print(" D:");
+    float bearing = fix.location.BearingToDegrees(saved);
+    if (bearing < 100){
+        display.print("0");
+    }
+    display.println(bearing);
     display.print(lat_prefix);
     if (lat < 100){
         display.print(0);
     }
     display.print(lat, 5);
-    display.print(" S:");
-    display.println(fix.speed_kph());
+    display.print(" H:");
+    float heading = fix.heading();
+    if (heading < 100){
+        display.print("0");
+    }
+    display.println(heading);
     display.print(lon_prefix);
     if (lon < 100){
         display.print(0);
     }
     display.print(lon, 5);
-    display.print(" A:");
-    display.println(fix.alt.whole);
+    display.print(" S:");
+    display.println(fix.speed_kph());
+
     display.display();
 }
 
