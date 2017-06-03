@@ -47,7 +47,7 @@ void setup()   {
     display.setTextColor(WHITE);
 }
 
-void display_line1 (float lat, int heading){
+char* prefix_lat (float lat){
     char* lat_prefix;
 
     if (lat < 0){
@@ -58,16 +58,10 @@ void display_line1 (float lat, int heading){
         lat_prefix = "N:";
     }
 
-    display.print(lat_prefix);
-    if (lat < 100){
-        display.print(0);
-    }
-    display.print(lat, 7);
-    display.print(" H:");
-    display.println(heading);
+    return lat_prefix;
 }
 
-void display_line2 (float lon, int satellites){
+char* prefix_lon (float lon){
     char* lon_prefix;
 
     if (lon < 0){
@@ -78,11 +72,39 @@ void display_line2 (float lon, int satellites){
         lon_prefix = "E:";
     }
 
+    return lon_prefix;
+}
+
+float unsign (float deg){
+    if (deg < 0){
+        deg = fabsf(deg);
+    }
+    return deg;
+}
+void display_line1 (float lat, int heading){
+
+    char* lat_prefix = prefix_lat(lat);
+    lat = unsign(lat);
+
+    display.print(lat_prefix);
+    if (lat < 100){
+        display.print(0);
+    }
+    display.print(lat, 5);
+    display.print(" H:");
+    display.println(heading);
+}
+
+void display_line2 (float lon, int satellites){
+
+    char* lon_prefix = prefix_lon(lon);
+    lon = unsign(lon);
+
     display.print(lon_prefix);
     if (lon < 100){
         display.print(0);
     }
-    display.print(lon, 7);
+    display.print(lon, 5);
     display.print(" s:");
     display.println(satellites);
 }
@@ -133,16 +155,47 @@ void display_home_screen (){
 void display_return_screen (float saved_lat, float saved_lon){
     NeoGPS::Location_t saved(saved_lat, saved_lon);
 
-    display.print(saved_lat, 7);
+    char* saved_lat_prefix = prefix_lat(saved_lat);
+    saved_lat = unsign(saved_lat);
+
+    char* saved_lon_prefix = prefix_lon(saved_lon);
+    saved_lon = unsign(saved_lon);
+
+    float lat = fix.latitude();
+    float lon = fix.longitude();
+
+    char* lat_prefix = prefix_lat(lat);
+    lat = unsign(lat);
+
+    char* lon_prefix = prefix_lon(lon);
+    lon = unsign(lon);
+
+    display.print(saved_lat_prefix);
+    if (lat < 100){
+        display.print(0);
+    }
+    display.print(saved_lat, 5);
     display.print(" D:");
     display.println(fix.location.BearingToDegrees(saved));
-    display.print(saved_lon, 7);
+    display.print(saved_lon_prefix);
+    if (lat < 100){
+        display.print(0);
+    }
+    display.print(saved_lon, 5);
     display.print(" K:");
     display.println(fix.location.DistanceKm(saved));
-    display.print(fix.latitude(), 7);
+    display.print(lat_prefix);
+    if (lat < 100){
+        display.print(0);
+    }
+    display.print(lat, 5);
     display.print(" S:");
     display.println(fix.speed_kph());
-    display.print(fix.longitude(), 7);
+    display.print(lon_prefix);
+    if (lon < 100){
+        display.print(0);
+    }
+    display.print(lon, 5);
     display.print(" A:");
     display.println(fix.alt.whole);
     display.display();
@@ -154,7 +207,6 @@ void coords_save (float lat, float lon){
     addr += sizeof(float);
     EEPROM.put(addr, lon);
 }
-
 
 int return_mode = 1;
 int eeprom_read = 0;
@@ -178,8 +230,12 @@ void loop() {
         display.setCursor(0, 0);
         display.clearDisplay();
 
-        display_return_screen(saved_lat, saved_lon);
-
+        if (return_mode){
+            display_return_screen(saved_lat, saved_lon);
+        }
+        else {
+            display_home_screen();
+        }
     }
 }
 
