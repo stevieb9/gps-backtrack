@@ -37,9 +37,20 @@ Adafruit_SSD1306 display(OLED_RESET);
 #error("Height incorrect, please fix Adafruit_SSD1306.h!");
 #endif
 
+int screen_button_count = 0;
+int screen_button_pin = 2;
+
+void screen_button (){
+    screen_button_count++;
+}
+
 void setup()   {
     Serial.begin(9600);
     gps_port.begin( 9600 );
+
+    pinMode(screen_button_pin, INPUT_PULLUP);
+    attachInterrupt(0, screen_button, RISING);
+
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     display.clearDisplay();
     display.display();
@@ -208,7 +219,7 @@ void coords_save (float lat, float lon){
     EEPROM.put(addr, lon);
 }
 
-int return_mode = 1;
+int return_mode = 0;
 int eeprom_read = 0;
 
 void loop() {
@@ -230,7 +241,7 @@ void loop() {
         display.setCursor(0, 0);
         display.clearDisplay();
 
-        if (return_mode){
+        if (screen_button_count % 2 == 0 && ! return_mode){
             display_return_screen(saved_lat, saved_lon);
         }
         else {
@@ -238,4 +249,3 @@ void loop() {
         }
     }
 }
-
