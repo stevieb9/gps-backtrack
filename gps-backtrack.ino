@@ -189,7 +189,7 @@ void display_return_screen (float saved_lat, float saved_lon){
     display.print(" K:");
     display.println(fix.location.DistanceKm(saved));
     display.print(saved_lon_prefix);
-    if (lat < 100){
+    if (lon < 100){
         display.print(0);
     }
     display.print(saved_lon, 5);
@@ -237,6 +237,7 @@ void loop() {
     float saved_lon;
 
     if (! eeprom_read){
+        coords_save(50.9535522,-114.5805601);
         int addr = 0;
         EEPROM.get(addr, saved_lat);
         addr += sizeof(float);
