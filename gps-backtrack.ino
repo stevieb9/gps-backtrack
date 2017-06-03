@@ -1,9 +1,12 @@
 #include <SPI.h>
+#include <EEPROM.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <NMEAGPS.h>
 #include <NeoSWSerial.h>
+
+
 
 // GPS
 #define RX_PIN 0
@@ -92,47 +95,91 @@ void display_line3(int alt, float speed){
 
 }
 
+void display_home_screen (){
+    display.print(fix.dateTime.year);
+    display.print(".");
+    if (fix.dateTime.month < 10){
+        display.print(0);
+    }
+    display.print(fix.dateTime.month);
+    display.print(".");
+    if (fix.dateTime.date < 10){
+        display.print(0);
+    }
+    display.print(fix.dateTime.date);
+    display.print(" ");
+    if (fix.dateTime.hours < 10){
+        display.print(0);
+    }
+    display.print(fix.dateTime.hours);
+    display.print(":");
+    if (fix.dateTime.minutes < 10){
+        display.print(0);
+    }
+    display.print(fix.dateTime.minutes);
+    display.print(":");
+    if (fix.dateTime.seconds < 10){
+        display.print(0);
+    }
+    display.print(fix.dateTime.seconds);
+    display.println(" UTC");
+
+    display_line1(fix.latitude(), fix.heading());
+    display_line2(fix.longitude(), fix.satellites);
+    display_line3(fix.alt.whole, fix.speed_kph());
+    display.display();
+}
+
+void display_return_screen (float saved_lat, float saved_lon){
+    NeoGPS::Location_t saved(saved_lat, saved_lon);
+
+    display.print(saved_lat, 7);
+    display.print(" D:");
+    display.println(fix.location.BearingToDegrees(saved));
+    display.print(saved_lon, 7);
+    display.print(" K:");
+    display.println(fix.location.DistanceKm(saved));
+    display.print(fix.latitude(), 7);
+    display.print(" S:");
+    display.println(fix.speed_kph());
+    display.print(fix.longitude(), 7);
+    display.print(" A:");
+    display.println(fix.alt.whole);
+    display.display();
+}
+
+void coords_save (float lat, float lon){
+    int addr = 0;
+    EEPROM.put(addr, lat);
+    addr += sizeof(float);
+    EEPROM.put(addr, lon);
+}
+
+
+int return_mode = 1;
+int eeprom_read = 0;
+
 void loop() {
 
-    while (gps.available( gps_port )) {
+    float saved_lat;
+    float saved_lon;
+
+    if (! eeprom_read){
+        int addr = 0;
+        EEPROM.get(addr, saved_lat);
+        addr += sizeof(float);
+        EEPROM.get(addr, saved_lon);
+        eeprom_read = 1;
+    }
+
+    while (gps.available(gps_port)) {
         fix = gps.read();
 
         display.setCursor(0, 0);
         display.clearDisplay();
 
-        display.print(fix.dateTime.year);
-        display.print(".");
-        if (fix.dateTime.month < 10){
-            display.print(0);
-        }
-        display.print(fix.dateTime.month);
-        display.print(".");
-        if (fix.dateTime.date < 10){
-            display.print(0);
-        }
-        display.print(fix.dateTime.date);
-        display.print(" ");
-        if (fix.dateTime.hours < 10){
-            display.print(0);
-        }
-        display.print(fix.dateTime.hours);
-        display.print(":");
-        if (fix.dateTime.minutes < 10){
-            display.print(0);
-        }
-        display.print(fix.dateTime.minutes);
-        display.print(":");
-        if (fix.dateTime.seconds < 10){
-            display.print(0);
-        }
-        display.print(fix.dateTime.seconds);
-        display.println(" UTC");
+        display_return_screen(saved_lat, saved_lon);
 
-        display_line1(fix.latitude(), fix.heading());
-        display_line2(fix.longitude(), fix.satellites);
-        display_line3(fix.alt.whole, fix.speed_kph());
-
-        display.display();
     }
 }
 
