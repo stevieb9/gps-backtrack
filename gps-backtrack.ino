@@ -29,14 +29,16 @@ Adafruit_SSD1306 display(OLED_RESET);
 #endif
 
 const int SCREEN_BUTTON_PIN = 2;
+const int SAVE_BUTTON_PIN = 3;
 
 static int screen_button_count = 0;
+static int save_button_count = 0;
 
 static NMEAGPS  gps;
 static gps_fix  fix;
 
 static int return_mode = 0; // manual toggle for return display
-static int eeprom_read = 0; // has the saved coords been read
+static int eeprom_read = 0; // has the saved coords been read?
 
 static float saved_lat;
 static float saved_lon;
@@ -47,6 +49,9 @@ void  setup()   {
 
     pinMode(SCREEN_BUTTON_PIN, INPUT_PULLUP);
     attachInterrupt(0, screen_button, RISING);
+
+    pinMode(SAVE_BUTTON_PIN, INPUT_PULLUP);
+    attachInterrupt(1, save_button, RISING);
 
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     display.clearDisplay();
@@ -216,10 +221,26 @@ void coords_save (float lat, float lon){
     addr += sizeof(float);
     EEPROM.put(addr, lon);
 }
+void save_button (){
+    save_button_count++;
+}
 void screen_button (){
     screen_button_count++;
 }
+void test_display_playground (){
+    display.print("***");
+    display.println(save_button_count);
+    display.display();
+}
+
+const byte playground = 0;
+byte coords_saved = 0;
+
 void loop() {
+//    display.println(save_button_count);
+//    display.println(coords_saved);
+//    display.display();
+
     if (! eeprom_read){
         coords_save(50.9535522,-114.5805601);
         int addr = 0;
@@ -229,17 +250,27 @@ void loop() {
         eeprom_read = 1;
     }
 
+
     while (gps.available(gps_port)) {
         fix = gps.read();
 
         display.setCursor(0, 0);
         display.clearDisplay();
 
-        if ((screen_button_count == 0 || screen_button_count % 2 == 0) && ! return_mode){
-            display_return_screen(saved_lat, saved_lon);
+        if (save_button_count && ! coords_saved){
+            display.print("holy crap!");
+            delay(1000);
+            coords_save(fix.latitude(), fix.longitude());
+            coords_saved = 1;
+            eeprom_read = 0;
         }
         else {
-            display_home_screen();
+            if ((screen_button_count == 0 || screen_button_count % 2 == 0) && ! return_mode){
+                display_return_screen(saved_lat, saved_lon);
+            }
+            else {
+                display_home_screen();
+            }
         }
     }
 }
