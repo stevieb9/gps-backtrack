@@ -1,7 +1,9 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <EEPROM.h>
+
 #include <NeoSWSerial.h>
+#include <AltSoftSerial.h>
 #include <NMEAGPS.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -51,7 +53,6 @@ void  setup()   {
     attachInterrupt(0, screen_button, RISING);
 
     pinMode(SAVE_BUTTON_PIN, INPUT_PULLUP);
-    attachInterrupt(1, save_button, RISING);
 
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     display.clearDisplay();
@@ -223,26 +224,66 @@ void coords_save (float lat, float lon){
 }
 void save_button (){
     save_button_count++;
+    float lat = fix.latitude();
+    float lon = fix.longitude();
+    int save_confirmed = 0;
+
+    for (int i=3; i>0; i--){
+        if (save_confirmed > 1){
+            display.setCursor(0, 0);
+            display.clearDisplay();
+            coords_save(fix.latitude(), fix.longitude());
+            Serial.println("Saving");
+            display.println("");
+            display.println("Saving...");
+            display.display();
+            delay(500);
+            eeprom_read = 0;
+            return;
+        }
+
+        display.setCursor(0, 0);
+        display.clearDisplay();
+
+        display.println("Save these coords?");
+        Serial.println(save_confirmed);
+
+        if (digitalRead(SAVE_BUTTON_PIN) == LOW){
+            save_confirmed++;
+        }
+
+        Serial.println(save_confirmed);
+        display.print("Lat:");
+        display.println(lat, 7);
+        display.print("Lon:");
+        display.println(lon, 7);
+        display.print("Aborting in ");
+        display.print(i);
+        display.println(" seconds");
+        display.display();
+        delay(1000);
+    }
+
+    display.setCursor(0, 0);
+    display.clearDisplay();
+    display.println("");
+    display.println("Aborted...");
+    display.display();
+    delay(500);
 }
 void screen_button (){
     screen_button_count++;
-}
-void test_display_playground (){
-    display.print("***");
-    display.println(save_button_count);
-    display.display();
 }
 
 const byte playground = 0;
 byte coords_saved = 0;
 
 void loop() {
-//    display.println(save_button_count);
-//    display.println(coords_saved);
-//    display.display();
+    if (digitalRead(SAVE_BUTTON_PIN) == LOW){
+        save_button();
+    }
 
     if (! eeprom_read){
-        coords_save(50.9535522,-114.5805601);
         int addr = 0;
         EEPROM.get(addr, saved_lat);
         addr += sizeof(float);
@@ -250,27 +291,17 @@ void loop() {
         eeprom_read = 1;
     }
 
-
     while (gps.available(gps_port)) {
         fix = gps.read();
-
+        Serial.println("running");
         display.setCursor(0, 0);
         display.clearDisplay();
 
-        if (save_button_count && ! coords_saved){
-            display.print("holy crap!");
-            delay(1000);
-            coords_save(fix.latitude(), fix.longitude());
-            coords_saved = 1;
-            eeprom_read = 0;
+        if ((screen_button_count == 0 || screen_button_count % 2 == 0) && ! return_mode){
+            display_return_screen(saved_lat, saved_lon);
         }
         else {
-            if ((screen_button_count == 0 || screen_button_count % 2 == 0) && ! return_mode){
-                display_return_screen(saved_lat, saved_lon);
-            }
-            else {
-                display_home_screen();
-            }
+            display_home_screen();
         }
     }
 }
