@@ -8,6 +8,14 @@
 #include <SPI.h>
 #include <Wire.h>
 
+// User modifiable
+
+#define FLOAT_DEC 5
+#define LCD_HEIGHT 32
+
+const int SCREEN_BUTTON_PIN = 2;
+const int SAVE_BUTTON_PIN = 3;
+
 // GPS
 
 #define RX_PIN 0
@@ -26,12 +34,26 @@
 
 Adafruit_SSD1306 display(OLED_RESET);
 
-#if (SSD1306_LCDHEIGHT != 32)
+#if (SSD1306_LCDHEIGHT != LCD_HEIGHT)
 #error("Height incorrect, please fix Adafruit_SSD1306.h!");
 #endif
 
-const int SCREEN_BUTTON_PIN = 2;
-const int SAVE_BUTTON_PIN = 3;
+// forward declarations
+
+void reset_display();
+String fstr (String str, float f, int len);
+String prefix_lat (float lat);
+String prefix_lon (float lon);
+float unsign (float deg);
+void display_line_2 ();
+void display_line_3 ();
+void display_line_4 ();
+String build_date ();
+void display_home_screen ();
+void display_return_screen (float saved_lat, float saved_lon);
+void coords_save ();
+void screen_button ();
+
 
 static int screen_button_count = 0;
 static int save_button_count = 0;
@@ -55,13 +77,15 @@ void  setup()   {
     pinMode(SAVE_BUTTON_PIN, INPUT_PULLUP);
 
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-    display.clearDisplay();
-    display.display();
+    reset_display();
     display.setTextSize(0);
     display.setTextColor(WHITE);
 }
-char* prefix_lat (float lat){
-    char* lat_prefix;
+String fstr (String str, float f, int len){
+    return str + String(f, len);
+}
+String prefix_lat (float lat){
+    String lat_prefix;
 
     if (lat < 0){
         lat = fabsf(lat);
@@ -73,8 +97,8 @@ char* prefix_lat (float lat){
 
     return lat_prefix;
 }
-char* prefix_lon (float lon){
-    char* lon_prefix;
+String prefix_lon (float lon){
+    String lon_prefix;
 
     if (lon < 0){
         lon = fabsf(lon);
@@ -92,89 +116,107 @@ float unsign (float deg){
     }
     return deg;
 }
-void display_line1 (float lat, int heading){
+void display_line2 (){
 
-    char* lat_prefix = prefix_lat(lat);
+    float lat = fix.latitude();
+    String lat_str = prefix_lat(lat);
+
     lat = unsign(lat);
 
-    display.print(lat_prefix);
     if (lat < 100){
-        display.print(0);
+        lat_str = lat_str + "0";
     }
-    display.print(lat, 5);
-    display.print(" H:");
-    display.println(heading);
-}
-void display_line2 (float lon, int satellites){
 
-    char* lon_prefix = prefix_lon(lon);
+    lat_str = fstr(lat_str, lat, FLOAT_DEC);
+
+    display.println(lat_str);
+    display.println(fstr("H:", fix.heading(), 0));
+}
+void display_line3 (){
+
+    float lon = fix.longitude();
+    int satellites = fix.satellites;
+
+    String lon_str = prefix_lon(lon);
+
     lon = unsign(lon);
 
-    display.print(lon_prefix);
     if (lon < 100){
-        display.print(0);
+        lon_str = lon_str + "0";
     }
-    display.print(lon, 5);
-    display.print(" s:");
-    display.println(satellites);
-}
-void display_line3(int alt, float speed){
-    display.print("A:");
-    display.print(alt);
-    display.print(" S:");
-    display.print(speed);
 
+    lon_str = fstr(lon_str, lon, FLOAT_DEC);
+
+    display.println(lon_str);
+    display.println("s:" + String(satellites));
+}
+void display_line4 (){
+    String str = "A:" + String(fix.alt.whole);
+    str = fstr(" s:", fix.speed_kph(), 3);
+    display.println(str);
+}
+String build_date (){
+    String date_str = "";
+
+    // year
+    date_str = date_str + String(fix.dateTime.year) + ".";
+
+    // month
+    if (fix.dateTime.month < 10){
+        date_str = date_str + "0";
+    }
+    date_str = date_str + String(fix.dateTime.month) + ".";
+
+    // day
+    if (fix.dateTime.date < 10){
+        date_str = date_str + "0";
+    }
+    date_str = date_str + String(fix.dateTime.date) + " ";
+
+    // hours
+    if (fix.dateTime.hours < 10){
+        date_str = date_str + "0";
+    }
+    date_str = date_str + String(fix.dateTime.hours) + ":";
+
+    // minutes
+    if (fix.dateTime.minutes < 10){
+        date_str = date_str + "0";
+    }
+    date_str = date_str + String(fix.dateTime.minutes) + ":";
+
+    // seconds
+    if (fix.dateTime.seconds < 10){
+        date_str = date_str + "0";
+    }
+
+    date_str = date_str + String(fix.dateTime.seconds) + " UTC";
+
+    return date_str;
 }
 void display_home_screen (){
-    display.print(fix.dateTime.year);
-    display.print(".");
-    if (fix.dateTime.month < 10){
-        display.print(0);
-    }
-    display.print(fix.dateTime.month);
-    display.print(".");
-    if (fix.dateTime.date < 10){
-        display.print(0);
-    }
-    display.print(fix.dateTime.date);
-    display.print(" ");
-    if (fix.dateTime.hours < 10){
-        display.print(0);
-    }
-    display.print(fix.dateTime.hours);
-    display.print(":");
-    if (fix.dateTime.minutes < 10){
-        display.print(0);
-    }
-    display.print(fix.dateTime.minutes);
-    display.print(":");
-    if (fix.dateTime.seconds < 10){
-        display.print(0);
-    }
-    display.print(fix.dateTime.seconds);
-    display.println(" UTC");
-
-    display_line1(fix.latitude(), fix.heading());
-    display_line2(fix.longitude(), fix.satellites);
-    display_line3(fix.alt.whole, fix.speed_kph());
+    display.println(build_date());
+    display_line2();
+    display_line3();
+    display_line4();
     display.display();
 }
 void display_return_screen (float saved_lat, float saved_lon){
     NeoGPS::Location_t saved(saved_lat, saved_lon);
 
-    char* saved_lat_prefix = prefix_lat(saved_lat);
+    String saved_lat_prefix = prefix_lat(saved_lat);
     saved_lat = unsign(saved_lat);
 
-    char* saved_lon_prefix = prefix_lon(saved_lon);
+    String saved_lon_prefix = prefix_lon(saved_lon);
     saved_lon = unsign(saved_lon);
 
     float lat = fix.latitude();
     float lon = fix.longitude();
 
-    char* lat_prefix = prefix_lat(lat);
+    String lat_prefix = prefix_lat(lat);
     lat = unsign(lat);
 
-    char* lon_prefix = prefix_lon(lon);
+    String lon_prefix = prefix_lon(lon);
     lon = unsign(lon);
 
     display.print(saved_lat_prefix);
@@ -229,43 +271,34 @@ void save_button (){
     int save_confirmed = 0;
 
     for (int i=3; i>0; i--){
+        Serial.println(save_confirmed);
         if (save_confirmed > 1){
-            display.setCursor(0, 0);
-            display.clearDisplay();
+            reset_display();
             coords_save(fix.latitude(), fix.longitude());
-            Serial.println("Saving");
             display.println("");
             display.println("Saving...");
             display.display();
-            delay(500);
             eeprom_read = 0;
+            delay(500);
             return;
         }
 
-        display.setCursor(0, 0);
-        display.clearDisplay();
-
+        reset_display();
         display.println("Save these coords?");
-        Serial.println(save_confirmed);
 
         if (digitalRead(SAVE_BUTTON_PIN) == LOW){
             save_confirmed++;
         }
 
-        Serial.println(save_confirmed);
-        display.print("Lat:");
-        display.println(lat, 7);
-        display.print("Lon:");
-        display.println(lon, 7);
-        display.print("Aborting in ");
-        display.print(i);
-        display.println(" seconds");
+        display.println("Lat:" + String(lat, FLOAT_DEC));
+        display.println("Lon:" + String(lon, FLOAT_DEC));
+        display.println("Aborting in " + String(i) + " seconds");
         display.display();
         delay(1000);
     }
 
-    display.setCursor(0, 0);
-    display.clearDisplay();
+    reset_display();
+
     display.println("");
     display.println("Aborted...");
     display.display();
@@ -274,10 +307,10 @@ void save_button (){
 void screen_button (){
     screen_button_count++;
 }
-
-const byte playground = 0;
-byte coords_saved = 0;
-
+void reset_display (){
+    display.setCursor(0, 0);
+    display.clearDisplay();
+}
 void loop() {
     if (digitalRead(SAVE_BUTTON_PIN) == LOW){
         save_button();
@@ -293,9 +326,7 @@ void loop() {
 
     while (gps.available(gps_port)) {
         fix = gps.read();
-        Serial.println("running");
-        display.setCursor(0, 0);
-        display.clearDisplay();
+        reset_display();
 
         if ((screen_button_count == 0 || screen_button_count % 2 == 0) && ! return_mode){
             display_return_screen(saved_lat, saved_lon);
@@ -305,3 +336,5 @@ void loop() {
         }
     }
 }
+
+
