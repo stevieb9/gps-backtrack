@@ -128,9 +128,7 @@ void display_line2 (){
     }
 
     lat_str = fstr(lat_str, lat, FLOAT_DEC);
-
-    display.println(lat_str);
-    display.println(fstr("H:", fix.heading(), 0));
+    display.println(lat_str + " H:" + String(fix.heading()));
 }
 void display_line3 (){
 
@@ -146,13 +144,11 @@ void display_line3 (){
     }
 
     lon_str = fstr(lon_str, lon, FLOAT_DEC);
-
-    display.println(lon_str);
-    display.println("s:" + String(satellites));
+    display.println(lon_str + " s:" + String(satellites));
 }
 void display_line4 (){
-    String str = "A:" + String(fix.alt.whole);
-    str = fstr(" s:", fix.speed_kph(), 3);
+    String str = "A:" + String(fix.alt.whole) + " S:";
+    str = fstr(str, fix.speed_kph(), 3);
     display.println(str);
 }
 String build_date (){
@@ -271,7 +267,6 @@ void save_button (){
     int save_confirmed = 0;
 
     for (int i=3; i>0; i--){
-        Serial.println(save_confirmed);
         if (save_confirmed > 1){
             reset_display();
             coords_save(fix.latitude(), fix.longitude());
@@ -328,7 +323,8 @@ void loop() {
         fix = gps.read();
         reset_display();
 
-        if ((screen_button_count == 0 || screen_button_count % 2 == 0) && ! return_mode){
+        Serial.println(screen_button_count);
+        if ((screen_button_count > 0 && screen_button_count % 2 == 0) && ! return_mode){
             display_return_screen(saved_lat, saved_lon);
         }
         else {
