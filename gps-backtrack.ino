@@ -3,18 +3,17 @@
 #include <EEPROM.h>
 
 #include <NeoSWSerial.h>
-#include <AltSoftSerial.h>
 #include <NMEAGPS.h>
 #include <SPI.h>
 #include <Wire.h>
 
-// User modifiable
+// user modifiable
 
 #define FLOAT_DEC 5
 #define LCD_HEIGHT 32
 
-const int SCREEN_BUTTON_PIN = 2;
-const int SAVE_BUTTON_PIN = 3;
+const int SCREEN_BUTTON_PIN = 3;  // display mode
+const int SAVE_BUTTON_PIN = 4;    // save current coords
 
 // GPS
 
@@ -23,6 +22,9 @@ const int SAVE_BUTTON_PIN = 3;
 
 #include "GPSport.h"
 #include "Streamers.h"
+
+static NMEAGPS  gps;
+static gps_fix  fix;
 
 // OLED
 
@@ -37,6 +39,19 @@ Adafruit_SSD1306 display(OLED_RESET);
 #if (SSD1306_LCDHEIGHT != LCD_HEIGHT)
 #error("Height incorrect, please fix Adafruit_SSD1306.h!");
 #endif
+
+// core variables
+
+boolean gps_available = false;    // GPS connected to serial?
+boolean gps_initialized = false;  // GPS initialized?
+
+static int screen_button_count = 0;
+static int save_button_count = 0;
+
+static int eeprom_read = 0; // has the saved coords been read?
+
+static float saved_lat;
+static float saved_lon;
 
 // forward declarations
 
@@ -54,25 +69,12 @@ void display_return_screen (float saved_lat, float saved_lon);
 void coords_save ();
 void screen_button ();
 
-
-static int screen_button_count = 0;
-static int save_button_count = 0;
-
-static NMEAGPS  gps;
-static gps_fix  fix;
-
-static int return_mode = 0; // manual toggle for return display
-static int eeprom_read = 0; // has the saved coords been read?
-
-static float saved_lat;
-static float saved_lon;
-
-void  setup()   {
+void setup(){
     Serial.begin(9600);
-    gps_port.begin( 9600 );
+    gps_port.begin(9600);
 
     pinMode(SCREEN_BUTTON_PIN, INPUT_PULLUP);
-    attachInterrupt(0, screen_button, RISING);
+    attachInterrupt(1, screen_button, RISING);
 
     pinMode(SAVE_BUTTON_PIN, INPUT_PULLUP);
 
@@ -148,7 +150,7 @@ void display_line3 (){
 }
 void display_line4 (){
     String str = "A:" + String(fix.alt.whole) + " S:";
-    str = fstr(str, fix.speed_kph(), 3);
+    str = fstr(str, fix.speed_kph(), 2);
     display.println(str);
 }
 String build_date (){
@@ -266,7 +268,7 @@ void save_button (){
     float lon = fix.longitude();
     int save_confirmed = 0;
 
-    for (int i=3; i>0; i--){
+    for (int i=5; i>0; i--){
         if (save_confirmed > 1){
             reset_display();
             coords_save(fix.latitude(), fix.longitude());
@@ -307,30 +309,59 @@ void reset_display (){
     display.clearDisplay();
 }
 void loop() {
-    if (digitalRead(SAVE_BUTTON_PIN) == LOW){
-        save_button();
+    reset_display();
+
+    if (! gps_available && ! Serial.available() > 0){
+        display.println("");
+        display.println("GPS device not found");
+        display.display();
+        delay(1000);
+    }
+    else {
+        gps_available = true;
     }
 
-    if (! eeprom_read){
-        int addr = 0;
-        EEPROM.get(addr, saved_lat);
-        addr += sizeof(float);
-        EEPROM.get(addr, saved_lon);
-        eeprom_read = 1;
-    }
-
-    while (gps.available(gps_port)) {
-        fix = gps.read();
-        reset_display();
-
-        Serial.println(screen_button_count);
-        if ((screen_button_count > 0 && screen_button_count % 2 == 0) && ! return_mode){
-            display_return_screen(saved_lat, saved_lon);
+    if (gps_available){
+        if (digitalRead(SAVE_BUTTON_PIN) == LOW){
+            save_button();
         }
-        else {
-            display_home_screen();
+
+        if (! eeprom_read){
+            int addr = 0;
+            EEPROM.get(addr, saved_lat);
+            addr += sizeof(float);
+            EEPROM.get(addr, saved_lon);
+            eeprom_read = 1;
+        }
+
+        while (gps.available(gps_port)){
+            reset_display();
+
+            fix = gps.read();
+
+            if (! gps_initialized){
+                if (fix.latitude() == 0){
+                    display.println("");
+                    display.print("Initializing GPS");
+
+                    for (int i=0; i<3; i++){
+                        delay(500);
+                        display.print(".");
+                        display.display();
+                    }
+                }
+                else {
+                    gps_initialized = true;
+                }
+            }
+            else {
+                if ((screen_button_count > 0 && screen_button_count % 2 == 0)){
+                    display_return_screen(saved_lat, saved_lon);
+                }
+                else {
+                    display_home_screen();
+                }
+            }
         }
     }
 }
-
-
