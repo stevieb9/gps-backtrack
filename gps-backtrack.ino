@@ -12,8 +12,8 @@
 #define FLOAT_DEC 5
 #define LCD_HEIGHT 32
 
-const int SCREEN_BUTTON_PIN = 3;  // display mode
-const int SAVE_BUTTON_PIN = 4;    // save current coords
+const uint8_t SCREEN_BUTTON_PIN = 3;  // display mode
+const uint8_t SAVE_BUTTON_PIN = 4;    // save current coords
 
 // GPS
 
@@ -23,8 +23,8 @@ const int SAVE_BUTTON_PIN = 4;    // save current coords
 #include "GPSport.h"
 #include "Streamers.h"
 
-static NMEAGPS  gps;
-static gps_fix  fix;
+static NMEAGPS gps;
+static gps_fix fix;
 
 // OLED
 
@@ -42,13 +42,13 @@ Adafruit_SSD1306 display(OLED_RESET);
 
 // core variables
 
-boolean gps_available = false;    // GPS connected to serial?
-boolean gps_initialized = false;  // GPS initialized?
+static boolean gps_available = false;    // GPS connected to serial?
+static boolean gps_initialized = false;  // GPS initialized?
 
-static int screen_button_count = 0;
-static int save_button_count = 0;
+static uint8_t screen_button_count = 0;
+static uint8_t save_button_count = 0;
 
-static int eeprom_read = 0; // has the saved coords been read?
+static boolean eeprom_read = 0; // has the saved coords been read?
 
 static float saved_lat;
 static float saved_lon;
@@ -135,7 +135,7 @@ void display_line2 (){
 void display_line3 (){
 
     float lon = fix.longitude();
-    int satellites = fix.satellites;
+    uint8_t satellites = fix.satellites;
 
     String lon_str = prefix_lon(lon);
 
@@ -257,7 +257,7 @@ void display_return_screen (float saved_lat, float saved_lon){
     display.display();
 }
 void coords_save (float lat, float lon){
-    int addr = 0;
+    uint16_t addr = 0;
     EEPROM.put(addr, lat);
     addr += sizeof(float);
     EEPROM.put(addr, lon);
@@ -266,9 +266,9 @@ void save_button (){
     save_button_count++;
     float lat = fix.latitude();
     float lon = fix.longitude();
-    int save_confirmed = 0;
+    uint8_t save_confirmed = 0;
 
-    for (int i=5; i>0; i--){
+    for (uint8_t i=5; i>0; i--){
         if (save_confirmed > 1){
             reset_display();
             coords_save(fix.latitude(), fix.longitude());
@@ -327,7 +327,7 @@ void loop() {
         }
 
         if (! eeprom_read){
-            int addr = 0;
+            uint16_t addr = 0;
             EEPROM.get(addr, saved_lat);
             addr += sizeof(float);
             EEPROM.get(addr, saved_lon);
@@ -344,7 +344,7 @@ void loop() {
                     display.println("");
                     display.print("Initializing GPS");
 
-                    for (int i=0; i<3; i++){
+                    for (uint8_t i=0; i<3; i++){
                         delay(500);
                         display.print(".");
                         display.display();
