@@ -145,8 +145,15 @@ void display_line3 (){
         lon_str = lon_str + "0";
     }
 
+    float volts = (analogRead(A2) * (5.0 / 1023));
+    String volt_str = fstr(" v:", volts, 1);
+
+    if (volts <= 3.45){
+        volt_str = " BATT-";
+    }
+    
     lon_str = fstr(lon_str, lon, FLOAT_DEC);
-    display.println(lon_str + " s:" + String(satellites));
+    display.println(lon_str + " s:" + String(satellites) + volt_str);
 }
 void display_line4 (){
     String str = "A:" + String(fix.alt.whole) + " S:";
@@ -325,7 +332,7 @@ void loop() {
         if (digitalRead(SAVE_BUTTON_PIN) == LOW){
             save_button();
         }
-
+        
         if (! eeprom_read){
             uint16_t addr = 0;
             EEPROM.get(addr, saved_lat);
@@ -360,8 +367,9 @@ void loop() {
                 }
                 else {
                     display_home_screen();
-                }
+                }            
             }
         }
     }
 }
+
