@@ -153,7 +153,16 @@ void display_line3 (){
     }
     
     lon_str = fstr(lon_str, lon, FLOAT_DEC);
-    display.println(lon_str + " s:" + String(satellites) + volt_str);
+    String sat_str;
+
+    if (satellites < 10){
+        sat_str = " s:" + String(satellites);
+    }
+    else {
+        sat_str = " s" + String(satellites);
+    }
+
+    display.println(lon_str + sat_str + volt_str);
 }
 void display_line4 (){
     String str = "A:" + String(fix.alt.whole) + " S:";
